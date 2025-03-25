@@ -13,6 +13,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use App\Service\UtilsService;
+use Karser\Recaptcha3Bundle\Validator\Constraints\Recaptcha3Validator;
 
 final class RegisterController extends AbstractController
 {
@@ -24,7 +25,7 @@ final class RegisterController extends AbstractController
     ) {}
 
     #[Route('/register', name: 'app_register_addaccount')]
-    public function addAccount(Request $request): Response
+    public function addAccount(Request $request, Recaptcha3Validator $recaptcha3Validator): Response
     {
         $msg = "";
         $type = "";
@@ -36,21 +37,26 @@ final class RegisterController extends AbstractController
         $form->handleRequest($request);
 
         if($form->isSubmitted() && $form->isValid()) {
-            //Test si le compte n'existe pas
-            if(!$this->accountRepository->findOneBy(["email" => $account->getEmail()])) {
-                $account->setStatus(false);
-                $account->setPassword($this->hasher->hashPassword($account, $account->getPassword()));
-                $account->setRoles(["ROLE_USER"]);
-                $this->em->persist($account);
-                $this->em->flush();
-                $msg = "Le compte a été ajouté en BDD";
-                $type = "success";
-            }
-            else {
-                $msg = "Les informations email et ou password existe déja";
+            //test l'utilisateur est un bot
+            if ($recaptcha3Validator->getLastResponse()->getScore() < 0.5) {
+                $msg = "L'utilisateur est un bot";
                 $type = "danger";
+            } else {
+                //Test si le compte n'existe pas
+                if(!$this->accountRepository->findOneBy(["email" => $account->getEmail()])) {
+                    $account->setStatus(false);
+                    $account->setPassword($this->hasher->hashPassword($account, $account->getPassword()));
+                    $account->setRoles(["ROLE_USER"]);
+                    $this->em->persist($account);
+                    $this->em->flush();
+                    $msg = "Le compte a été ajouté en BDD";
+                    $type = "success";
+                }
+                else {
+                    $msg = "Les informations email et ou password existe déja";
+                    $type = "danger";
+                }
             }
-
             $this->addFlash($type,$msg);
         }
 
