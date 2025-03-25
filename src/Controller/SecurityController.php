@@ -41,7 +41,7 @@ class SecurityController extends AbstractController
             return $this->redirectToRoute('app_logout');
         }
         //Redirection vers la page d'accueil
-        return $this->redirectToRoute('app_home');
+        return $this->redirectToRoute('app_product_index');
     }
 
     #[Route(path: '/logout', name: 'app_logout')]
